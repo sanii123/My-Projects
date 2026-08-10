@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environment and secrets
+.env
+
+# Collected data
+data/raw/
+data/metadata/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Testing and tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.vscode/
