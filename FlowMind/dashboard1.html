@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FlowMind — Operations Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e29;--bg4:#21273a;
+  --border:#2a3149;--border2:#3a4466;
+  --text:#e8eaf0;--text2:#8b93b0;--text3:#5a6280;
+  --teal:#1D9E75;--teal2:#0f6e56;--teal-dim:#0d3d2e;
+  --amber:#EF9F27;--amber2:#BA7517;--amber-dim:#3d2a08;
+  --red:#E24B4A;--red2:#A32D2D;--red-dim:#3d1212;
+  --blue:#378ADD;--blue2:#185FA5;--blue-dim:#0c2040;
+  --purple:#7F77DD;--purple-dim:#1e1c40;
+  --green:#639922;--green-dim:#1a2508;
+  --font:'DM Sans',sans-serif;--mono:'Space Mono',monospace;
+  --radius:8px;--radius2:12px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;min-height:100vh;overflow-x:hidden;}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-hex{width:34px;height:34px;background:linear-gradient(135deg,var(--teal),var(--teal2));border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.logo-hex svg{width:18px;height:18px;}
+.logo-title{font-size:16px;font-weight:600;letter-spacing:-0.5px;color:var(--text);}
+.logo-sub{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
+.header-right{display:flex;align-items:center;gap:20px;}
+.live-badge{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--teal);background:var(--teal-dim);padding:5px 10px;border-radius:20px;border:1px solid var(--teal2);}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+.clock{font-family:var(--mono);font-size:12px;color:var(--text2);}
+.conn-status{font-family:var(--mono);font-size:10px;padding:4px 8px;border-radius:4px;}
+.conn-ok{color:var(--teal);background:var(--teal-dim);}
+.conn-err{color:var(--red);background:var(--red-dim);}
+
+/* LAYOUT */
+.main{padding:20px 24px;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto;gap:16px;}
+.span2{grid-column:span 2;}
+.span3{grid-column:span 3;}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;overflow:hidden;}
+.card-title{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* KPI ROW */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.kpi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;text-align:center;}
+.kpi-val{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;}
+.kpi-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-top:5px;}
+.kpi-val.teal{color:var(--teal);}
+.kpi-val.amber{color:var(--amber);}
+.kpi-val.red{color:var(--red);}
+.kpi-val.blue{color:var(--blue);}
+.kpi-val.purple{color:var(--purple);}
+
+/* AGENTS */
+.agents-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.agent{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 10px;text-align:center;transition:all 0.3s;}
+.agent.active{border-color:var(--teal);box-shadow:0 0 12px rgba(29,158,117,0.15);}
+.agent.busy{border-color:var(--amber);box-shadow:0 0 12px rgba(239,159,39,0.15);animation:agentpulse 0.5s;}
+.agent.alert{border-color:var(--red);box-shadow:0 0 12px rgba(226,75,74,0.2);animation:agentpulse 0.3s;}
+@keyframes agentpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+.agent-emoji{font-size:20px;margin-bottom:6px;}
+.agent-name{font-size:10px;font-weight:500;color:var(--text);line-height:1.3;}
+.agent-st{font-family:var(--mono);font-size:9px;margin-top:4px;}
+.agent-st.ok{color:var(--teal);}
+.agent-st.busy{color:var(--amber);}
+.agent-st.alert{color:var(--red);}
+.agent-count{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text);margin-top:6px;}
+
+/* EQUIPMENT */
+.equip-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.equip{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;transition:all 0.4s;}
+.equip.fault{border-color:var(--red);background:rgba(61,18,18,0.4);}
+.equip.warn{border-color:var(--amber);}
+.equip-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.equip-id{font-family:var(--mono);font-size:12px;font-weight:700;}
+.equip-badge{font-family:var(--mono);font-size:8px;font-weight:700;padding:3px 8px;border-radius:4px;}
+.badge-ok{background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal2);}
+.badge-fault{background:var(--red-dim);color:var(--red);border:1px solid var(--red2);}
+.badge-warn{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber2);}
+.sensor{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.sensor-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.sensor-val{font-family:var(--mono);font-size:10px;font-weight:700;}
+.sensor-val.ok{color:var(--teal);}
+.sensor-val.high{color:var(--red);}
+.sensor-val.warn{color:var(--amber);}
+.bar-track{height:3px;background:var(--border);border-radius:2px;margin-top:8px;}
+.bar-fill{height:3px;border-radius:2px;transition:width 0.8s,background 0.4s;}
+
+/* MESSAGE FEED */
+.feed{display:flex;flex-direction:column;gap:5px;max-height:280px;overflow-y:auto;}
+.feed::-webkit-scrollbar{width:3px;}
+.feed::-webkit-scrollbar-track{background:var(--bg);}
+.feed::-webkit-scrollbar-thumb{background:var(--border2);}
+.msg{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;display:flex;gap:10px;align-items:flex-start;animation:msgslide 0.3s ease;border-left-width:2px;}
+@keyframes msgslide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.msg.fault{border-left-color:var(--red);}
+.msg.diag{border-left-color:var(--blue);}
+.msg.dispatch{border-left-color:var(--amber);}
+.msg.report{border-left-color:var(--green);}
+.msg.flow{border-left-color:var(--purple);}
+.msg.system{border-left-color:var(--teal);}
+.msg.normal{border-left-color:var(--border2);}
+.msg-time{font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;flex-shrink:0;padding-top:1px;}
+.msg-txt{font-size:10px;color:var(--text2);line-height:1.5;}
+
+/* INCIDENTS */
+.incidents{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;}
+.incidents::-webkit-scrollbar{width:3px;}
+.incidents::-webkit-scrollbar-thumb{background:var(--border2);}
+.incident{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;animation:msgslide 0.3s ease;}
+.incident.emergency{border-left:2px solid var(--red);}
+.incident.scheduled{border-left:2px solid var(--amber);}
+.incident.monitor{border-left:2px solid var(--blue);}
+.inc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.inc-eq{font-family:var(--mono);font-size:12px;font-weight:700;}
+.urg{font-family:var(--mono);font-size:8px;font-weight:700;padding:3px 8px;border-radius:4px;}
+.urg.emergency{background:var(--red-dim);color:var(--red);border:1px solid var(--red2);}
+.urg.scheduled{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber2);}
+.urg.monitor{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue2);}
+.inc-cause{font-size:10px;color:var(--text2);margin-bottom:4px;}
+.inc-tech{font-family:var(--mono);font-size:9px;color:var(--teal);}
+.inc-time{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.inc-meta{display:flex;justify-content:space-between;margin-top:5px;padding-top:5px;border-top:1px solid var(--border);}
+
+/* DEMAND TABLE */
+.demand-table{width:100%;border-collapse:collapse;}
+.demand-table th{font-family:var(--mono);font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);}
+.demand-table td{padding:7px 8px;font-size:10px;border-bottom:1px solid var(--border);color:var(--text2);}
+.demand-table tr:last-child td{border-bottom:none;}
+.demand-table td:first-child{font-family:var(--mono);font-weight:700;color:var(--text);}
+.risk-pill{font-family:var(--mono);font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px;}
+.risk-high{background:var(--red-dim);color:var(--red);}
+.risk-medium{background:var(--amber-dim);color:var(--amber);}
+.risk-low{background:var(--teal-dim);color:var(--teal);}
+
+/* FOOTER */
+.footer{text-align:center;padding:16px;font-family:var(--mono);font-size:9px;color:var(--text3);border-top:1px solid var(--border);margin-top:8px;}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:30px;font-family:var(--mono);font-size:10px;color:var(--text3);}
+
+/* CONN ERROR OVERLAY */
+.conn-banner{display:none;background:var(--red-dim);border:1px solid var(--red2);color:var(--red);font-family:var(--mono);font-size:10px;padding:8px 24px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="conn-banner" id="conn-banner">
+  ⚠ Cannot connect to FlowMind API — make sure python main.py is running on port 5000
+</div>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-hex">
+      <svg viewBox="0 0 18 18" fill="none">
+        <path d="M9 2L14.5 5.5V12.5L9 16L3.5 12.5V5.5L9 2Z" stroke="white" stroke-width="1.5"/>
+        <circle cx="9" cy="9" r="2.5" fill="white"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-title">FlowMind Operations</div>
+      <div class="logo-sub">TIES454 · Neural Nexus · University of Jyväskylä · SPADE MAS</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="conn-status conn-ok" id="conn-indicator">● API CONNECTED</span>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- KPI ROW -->
+  <div class="card span3">
+    <div class="card-title">System KPIs</div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-val teal" id="kpi-total">0</div><div class="kpi-label">Total incidents</div></div>
+      <div class="kpi"><div class="kpi-val red" id="kpi-emerg">0</div><div class="kpi-label">Emergency</div></div>
+      <div class="kpi"><div class="kpi-val amber" id="kpi-sched">0</div><div class="kpi-label">Scheduled</div></div>
+      <div class="kpi"><div class="kpi-val blue" id="kpi-msgs">0</div><div class="kpi-label">Messages sent</div></div>
+      <div class="kpi"><div class="kpi-val purple" id="kpi-down">0</div><div class="kpi-label">Min. downtime saved</div></div>
+    </div>
+  </div>
+
+  <!-- AGENTS -->
+  <div class="card span3">
+    <div class="card-title">Agent network</div>
+    <div class="agents-row">
+      <div class="agent active" id="ag-fault_detection">
+        <div class="agent-emoji">🔍</div>
+        <div class="agent-name">Fault Detection</div>
+        <div class="agent-st ok" id="ag-fault_detection-st">monitoring</div>
+        <div class="agent-count" id="ag-fault_detection-cnt">0</div>
+      </div>
+      <div class="agent active" id="ag-diagnostic">
+        <div class="agent-emoji">🧠</div>
+        <div class="agent-name">Diagnostic</div>
+        <div class="agent-st ok" id="ag-diagnostic-st">waiting</div>
+        <div class="agent-count" id="ag-diagnostic-cnt">0</div>
+      </div>
+      <div class="agent active" id="ag-people_flow">
+        <div class="agent-emoji">👥</div>
+        <div class="agent-name">People Flow</div>
+        <div class="agent-st ok" id="ag-people_flow-st">forecasting</div>
+        <div class="agent-count" id="ag-people_flow-cnt">0</div>
+      </div>
+      <div class="agent active" id="ag-dispatch">
+        <div class="agent-emoji">📡</div>
+        <div class="agent-name">Dispatch Coord.</div>
+        <div class="agent-st ok" id="ag-dispatch-st">standby</div>
+        <div class="agent-count" id="ag-dispatch-cnt">0</div>
+      </div>
+      <div class="agent active" id="ag-reporting">
+        <div class="agent-emoji">📋</div>
+        <div class="agent-name">Reporting</div>
+        <div class="agent-st ok" id="ag-reporting-st">collecting</div>
+        <div class="agent-count" id="ag-reporting-cnt">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EQUIPMENT -->
+  <div class="card">
+    <div class="card-title">Equipment monitoring</div>
+    <div class="equip-grid" id="equip-grid">
+      <div class="empty">Waiting for sensor data...</div>
+    </div>
+  </div>
+
+  <!-- MESSAGE FEED -->
+  <div class="card">
+    <div class="card-title">Live message feed</div>
+    <div class="feed" id="feed">
+      <div class="empty">Waiting for agent messages...</div>
+    </div>
+  </div>
+
+  <!-- DEMAND FORECAST -->
+  <div class="card">
+    <div class="card-title">Passenger demand forecast</div>
+    <table class="demand-table" id="demand-table">
+      <thead>
+        <tr>
+          <th>Unit</th>
+          <th>Passengers</th>
+          <th>Window</th>
+          <th>Risk</th>
+        </tr>
+      </thead>
+      <tbody id="demand-body">
+        <tr><td colspan="4" style="text-align:center;color:var(--text3);font-family:var(--mono);font-size:10px;padding:20px;">Awaiting forecasts...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- INCIDENT LOG -->
+  <div class="card span2">
+    <div class="card-title">Incident log</div>
+    <div class="incidents" id="incidents">
+      <div class="empty">No incidents yet — system monitoring active</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  FlowMind v1.0 · SPADE 3.x · ejabberd XMPP · Flask REST API · Python 3.11 · 5 agents · 4 equipment units
+</div>
+
+<script>
+const API = 'http://localhost:5000/api/snapshot';
+let prevMsgs = 0;
+let prevIncidents = 0;
+let agentPrevCounts = {};
+
+function clock(){
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('fi-FI');
+}
+setInterval(clock, 1000);
+clock();
+
+function agentClass(status){
+  const s = (status||'').toLowerCase();
+  if(s.includes('anomaly')||s.includes('alert')||s.includes('emergency')) return 'alert';
+  if(s.includes('analys')||s.includes('dispatching')||s.includes('busy')||
+     s.includes('triage')||s.includes('logging')||s.includes('received')) return 'busy';
+  return 'active';
+}
+function agentStClass(status){
+  const s = (status||'').toLowerCase();
+  if(s.includes('anomaly')||s.includes('alert')||s.includes('emergency')) return 'alert';
+  if(s.includes('analys')||s.includes('dispatching')||s.includes('busy')||
+     s.includes('triage')||s.includes('logging')||s.includes('received')) return 'busy';
+  return 'ok';
+}
+
+function renderAgents(agents){
+  Object.entries(agents).forEach(([name,data])=>{
+    const card = document.getElementById(`ag-${name}`);
+    const st   = document.getElementById(`ag-${name}-st`);
+    const cnt  = document.getElementById(`ag-${name}-cnt`);
+    if(!card) return;
+    card.className = `agent ${agentClass(data.status)}`;
+    st.textContent  = data.status || 'unknown';
+    st.className    = `agent-st ${agentStClass(data.status)}`;
+    if(cnt) cnt.textContent = data.msg_count || 0;
+  });
+}
+
+function renderEquip(readings){
+  const grid = document.getElementById('equip-grid');
+  if(!readings || !Object.keys(readings).length){
+    grid.innerHTML = '<div class="empty">Waiting for sensor data...</div>';
+    return;
+  }
+  grid.innerHTML = Object.entries(readings).map(([id,r])=>{
+    const isFault = r.severity && r.severity !== 'normal';
+    const isHigh  = r.severity === 'high';
+    const cls     = isHigh ? 'fault' : (isFault ? 'warn' : '');
+    const badge   = isHigh ? 'badge-fault' : (isFault ? 'badge-warn' : 'badge-ok');
+    const badgeTxt= isHigh ? 'FAULT' : (isFault ? 'WARN' : 'NORMAL');
+    const vib = parseFloat(r.vibration||0);
+    const tmp = parseFloat(r.temperature||0);
+    const drs = parseInt(r.door_cycles||0);
+    const vibCls = vib>7?'high':vib>5?'warn':'ok';
+    const tmpCls = tmp>75?'high':tmp>65?'warn':'ok';
+    const drsCls = drs>950?'high':drs>800?'warn':'ok';
+    const pct = Math.min(95,Math.round((vib/12)*100));
+    const barClr = vib>7?'var(--red)':vib>5?'var(--amber)':'var(--teal)';
+    return `
+    <div class="equip ${cls}">
+      <div class="equip-top">
+        <span class="equip-id">${id}</span>
+        <span class="equip-badge ${badge}">${badgeTxt}</span>
+      </div>
+      <div class="sensor"><span class="sensor-lbl">VIBRATION</span><span class="sensor-val ${vibCls}">${vib.toFixed(2)}</span></div>
+      <div class="sensor"><span class="sensor-lbl">TEMP</span><span class="sensor-val ${tmpCls}">${tmp.toFixed(1)}°C</span></div>
+      <div class="sensor"><span class="sensor-lbl">DOOR CYCLES</span><span class="sensor-val ${drsCls}">${drs}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${barClr};"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderFeed(messages){
+  if(!messages||!messages.length) return;
+  const feed = document.getElementById('feed');
+  if(feed.querySelector('.empty')) feed.innerHTML='';
+  const existing = feed.querySelectorAll('.msg').length;
+  if(messages.length <= prevMsgs) return;
+  const newMsgs = messages.slice(0, messages.length - prevMsgs);
+  prevMsgs = messages.length;
+  newMsgs.forEach(m=>{
+    const div = document.createElement('div');
+    div.className = `msg ${m.type||'system'}`;
+    div.innerHTML = `<span class="msg-time">${m.timestamp||''}</span><span class="msg-txt">${m.text||''}</span>`;
+    feed.insertBefore(div, feed.firstChild);
+  });
+  while(feed.querySelectorAll('.msg').length > 40) feed.removeChild(feed.lastChild);
+}
+
+function renderIncidents(incidents){
+  if(!incidents||!incidents.length) return;
+  const list = document.getElementById('incidents');
+  if(list.querySelector('.empty')) list.innerHTML='';
+  if(incidents.length <= prevIncidents) return;
+  prevIncidents = incidents.length;
+  list.innerHTML = incidents.slice(0,15).map(inc=>`
+    <div class="incident ${inc.urgency||'monitor'}">
+      <div class="inc-top">
+        <span class="inc-eq">${inc.equipment_id}</span>
+        <span class="urg ${inc.urgency||'monitor'}">${(inc.urgency||'monitor').toUpperCase()}</span>
+      </div>
+      <div class="inc-cause">${inc.root_cause||''}</div>
+      <div class="inc-tech">→ ${inc.technician||''}</div>
+      <div class="inc-meta">
+        <span class="inc-time">TTF: ${inc.ttf_hours||'?'}h</span>
+        <span class="inc-time">${inc.predicted_passengers||0} passengers at risk</span>
+        <span class="inc-time">${inc.timestamp||''}</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderDemand(forecasts){
+  if(!forecasts||!Object.keys(forecasts).length) return;
+  const body = document.getElementById('demand-body');
+  body.innerHTML = Object.entries(forecasts).map(([id,f])=>`
+    <tr>
+      <td>${id}</td>
+      <td style="font-family:var(--mono);font-weight:700;">${f.passengers||0}</td>
+      <td style="color:var(--text3);">${f.time_window||'-'}</td>
+      <td><span class="risk-pill risk-${f.risk||'low'}">${(f.risk||'low').toUpperCase()}</span></td>
+    </tr>`).join('');
+}
+
+function renderKpis(kpis){
+  if(!kpis) return;
+  document.getElementById('kpi-total').textContent = kpis.total_incidents||0;
+  document.getElementById('kpi-emerg').textContent = kpis.emergencies||0;
+  document.getElementById('kpi-sched').textContent = kpis.scheduled||0;
+  document.getElementById('kpi-msgs').textContent  = kpis.messages_sent||0;
+  document.getElementById('kpi-down').textContent  = kpis.downtime_saved||0;
+}
+
+async function poll(){
+  try{
+    const res  = await fetch(API);
+    const data = await res.json();
+    document.getElementById('conn-indicator').textContent = '● API CONNECTED';
+    document.getElementById('conn-indicator').className = 'conn-status conn-ok';
+    document.getElementById('conn-banner').style.display = 'none';
+    renderKpis(data.kpis);
+    renderAgents(data.agent_status||{});
+    renderEquip(data.sensor_readings||{});
+    renderFeed(data.messages||[]);
+    renderIncidents(data.incidents||[]);
+    renderDemand(data.demand_forecasts||{});
+  } catch(e){
+    document.getElementById('conn-indicator').textContent = '● API OFFLINE';
+    document.getElementById('conn-indicator').className = 'conn-status conn-err';
+    document.getElementById('conn-banner').style.display = 'block';
+  }
+}
+
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>

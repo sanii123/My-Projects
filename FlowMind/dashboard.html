@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FlowMind — Building Infrastructure Control</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#F4F5F7;--surface:#FFFFFF;--surface2:#F8F9FB;--surface3:#EEF0F4;
+  --border:#DDE1EA;--border2:#C8CCDA;
+  --ink:#0F1623;--ink2:#3D4560;--ink3:#7B849E;--ink4:#A8B0C4;
+  --teal:#0B7A5E;--teal-lt:#E6F4F0;--teal-md:#1FAF87;
+  --amber:#92580A;--amber-lt:#FDF3E3;--amber-md:#E09020;
+  --red:#B91C1C;--red-lt:#FEF2F2;--red-md:#DC2626;
+  --blue:#1547A0;--blue-lt:#EFF4FF;--blue-md:#2563EB;
+  --slate:#2D3A52;
+  --topbar-h:52px;
+  --font:'IBM Plex Sans',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+
+/* ── RESET & FULL-HEIGHT ── */
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;display:flex;flex-direction:column;}
+
+/* ── TOPBAR ── */
+.topbar{
+  flex-shrink:0;
+  background:var(--slate);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:var(--topbar-h);
+  z-index:100;
+}
+.tb-left{display:flex;align-items:center;gap:16px;}
+.tb-brand{display:flex;align-items:center;gap:10px;}
+.tb-icon{width:30px;height:30px;background:rgba(255,255,255,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.tb-icon svg{width:18px;height:18px;}
+.tb-name{font-size:15px;font-weight:600;letter-spacing:0.2px;}
+.tb-div{width:1px;height:20px;background:rgba(255,255,255,0.15);}
+.tb-sub{font-size:10px;color:rgba(255,255,255,0.45);font-family:var(--mono);}
+.tb-right{display:flex;align-items:center;gap:14px;}
+.tb-time{font-family:var(--mono);font-size:12px;color:rgba(255,255,255,0.55);}
+.tb-pill{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:20px;}
+.pill-live{background:rgba(31,175,135,0.15);color:#5EE8BC;border:1px solid rgba(31,175,135,0.3);}
+.pill-err{background:rgba(220,38,38,0.15);color:#FCA5A5;border:1px solid rgba(220,38,38,0.3);}
+.pill-dot{width:5px;height:5px;border-radius:50%;animation:blink 1.3s infinite;}
+.pill-live .pill-dot{background:#5EE8BC;}
+.pill-err .pill-dot{background:#FCA5A5;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* ── OFFLINE BANNER ── */
+.offline{
+  flex-shrink:0;display:none;
+  background:#FEF2F2;border-bottom:1px solid rgba(185,28,28,0.2);
+  padding:7px 24px;font-family:var(--mono);font-size:10px;color:var(--red);
+}
+
+/* ── MAIN LAYOUT — fixed height, no overflow ── */
+.workspace{
+  flex:1;
+  display:grid;
+  grid-template-columns:210px 1fr;
+  overflow:hidden; /* critical — prevents layout blowout */
+  min-height:0;
+}
+
+/* ── SIDEBAR — scrolls internally ── */
+.sidebar{
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.sidebar-inner{
+  flex:1;overflow-y:auto;padding:16px 0 16px;
+}
+.sidebar-inner::-webkit-scrollbar{width:3px;}
+.sidebar-inner::-webkit-scrollbar-thumb{background:var(--border2);}
+
+.sb-sec{margin-bottom:20px;}
+.sb-lbl{font-family:var(--mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--ink4);padding:0 16px;margin-bottom:8px;}
+
+.sb-agent{display:flex;align-items:center;gap:8px;padding:8px 16px;border-left:2px solid transparent;transition:all 0.2s;}
+.sb-agent.st-active{background:var(--teal-lt);border-left-color:var(--teal-md);}
+.sb-agent.st-busy{background:var(--amber-lt);border-left-color:var(--amber-md);}
+.sb-agent.st-alert{background:var(--red-lt);border-left-color:var(--red-md);}
+.sb-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sb-icon svg{width:13px;height:13px;}
+.i-teal{background:var(--teal-lt);}
+.i-teal svg{stroke:var(--teal);}
+.i-blue{background:var(--blue-lt);}
+.i-blue svg{stroke:var(--blue-md);}
+.i-amber{background:var(--amber-lt);}
+.i-amber svg{stroke:var(--amber);}
+.i-slate{background:var(--surface3);}
+.i-slate svg{stroke:var(--ink2);}
+.sb-info{flex:1;min-width:0;}
+.sb-name{font-size:10px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-st{font-family:var(--mono);font-size:8px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-st.ok{color:var(--teal);}
+.sb-st.busy{color:var(--amber);}
+.sb-st.alert{color:var(--red-md);}
+.sb-cnt{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ink3);flex-shrink:0;}
+
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 16px;}
+.kpi-box{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;}
+.kpi-val{font-family:var(--mono);font-size:18px;font-weight:600;line-height:1;}
+.kpi-lbl{font-size:8px;color:var(--ink3);margin-top:3px;line-height:1.3;}
+.kpi-val.c-teal{color:var(--teal-md);}
+.kpi-val.c-red{color:var(--red-md);}
+.kpi-val.c-amber{color:var(--amber-md);}
+.kpi-val.c-blue{color:var(--blue-md);}
+.kpi-wide{grid-column:span 2;}
+
+/* ── CONTENT AREA — scrolls internally ── */
+.content{
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  min-height:0;
+}
+
+/* TOP STRIP — equipment (fixed, no scroll) */
+.strip-equip{
+  flex-shrink:0;
+  padding:14px 16px 12px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.strip-title{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;}
+
+.equip-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.eq-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;transition:border-color 0.3s;}
+.eq-card.f-fault{border-color:var(--red-md);background:var(--red-lt);}
+.eq-card.f-warn{border-color:var(--amber-md);background:var(--amber-lt);}
+.eq-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.eq-id{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink);}
+.eq-type{font-size:8px;color:var(--ink4);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+.eq-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.eq-dot{width:7px;height:7px;border-radius:50%;}
+.dot-ok{background:var(--teal-md);}
+.dot-warn{background:var(--amber-md);animation:blink 1.2s infinite;}
+.dot-fault{background:var(--red-md);animation:blink 0.7s infinite;}
+.eq-sev{font-family:var(--mono);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;}
+.s-ok{background:var(--teal-lt);color:var(--teal);}
+.s-low{background:#FFF8E6;color:var(--amber);}
+.s-medium{background:var(--amber-lt);color:var(--amber);}
+.s-high{background:var(--red-lt);color:var(--red);}
+.eq-sensors{}
+.snr{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.snr:last-child{margin-bottom:0;}
+.snr-lbl{font-family:var(--mono);font-size:8px;color:var(--ink4);width:44px;flex-shrink:0;}
+.snr-track{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.snr-fill{height:100%;border-radius:2px;transition:width 0.7s,background 0.4s;}
+.snr-val{font-family:var(--mono);font-size:9px;font-weight:500;width:38px;text-align:right;flex-shrink:0;}
+.r-ok{color:var(--teal);}
+.r-warn{color:var(--amber-md);}
+.r-high{color:var(--red-md);}
+
+/* LOWER AREA — 3 columns, each scrolls internally */
+.lower{
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:0;
+  overflow:hidden;
+  min-height:0;
+}
+.lower-col{
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  border-right:1px solid var(--border);
+}
+.lower-col:last-child{border-right:none;}
+.col-head{
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  background:var(--surface2);
+}
+.col-title{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink2);}
+.col-badge{font-family:var(--mono);font-size:8px;background:var(--surface3);color:var(--ink3);padding:2px 7px;border-radius:4px;border:1px solid var(--border);}
+.col-body{
+  flex:1;
+  overflow-y:auto;  /* each column scrolls independently */
+  padding:10px 12px;
+  display:flex;flex-direction:column;gap:5px;
+  min-height:0;
+}
+.col-body::-webkit-scrollbar{width:3px;}
+.col-body::-webkit-scrollbar-thumb{background:var(--border2);}
+
+/* INCIDENT ITEMS */
+.inc{border:1px solid var(--border);border-radius:7px;overflow:hidden;animation:fin 0.3s ease;flex-shrink:0;}
+@keyframes fin{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.inc-bar{height:3px;}
+.inc-bar.emergency{background:var(--red-md);}
+.inc-bar.scheduled{background:var(--amber-md);}
+.inc-bar.monitor{background:var(--blue-md);}
+.inc-body{padding:8px 10px;}
+.inc-r1{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.inc-eq{font-family:var(--mono);font-size:11px;font-weight:600;}
+.urg{font-family:var(--mono);font-size:7px;font-weight:700;padding:2px 6px;border-radius:3px;}
+.urg.emergency{background:var(--red-lt);color:var(--red);}
+.urg.scheduled{background:var(--amber-lt);color:var(--amber);}
+.urg.monitor{background:var(--blue-lt);color:var(--blue);}
+.inc-cause{font-size:9px;color:var(--ink2);margin-bottom:3px;line-height:1.4;}
+.inc-footer{display:flex;justify-content:space-between;padding-top:4px;border-top:1px solid var(--border);}
+.inc-tech{font-family:var(--mono);font-size:8px;color:var(--teal);}
+.inc-ttf{font-family:var(--mono);font-size:8px;color:var(--ink4);}
+
+/* FEED ITEMS */
+.fi{display:flex;gap:7px;padding:6px 8px;border-radius:5px;background:var(--surface2);border-left:2px solid;animation:fin 0.25s;flex-shrink:0;}
+.fi.fault{border-left-color:var(--red-md);}
+.fi.diag{border-left-color:var(--blue-md);}
+.fi.dispatch{border-left-color:var(--amber-md);}
+.fi.report{border-left-color:var(--teal-md);}
+.fi.flow{border-left-color:#7C3AED;}
+.fi.system{border-left-color:var(--ink4);}
+.fi.normal{border-left-color:var(--border2);}
+.fi-time{font-family:var(--mono);font-size:8px;color:var(--ink4);flex-shrink:0;padding-top:1px;}
+.fi-txt{font-size:9px;color:var(--ink2);line-height:1.5;}
+
+/* DEMAND TABLE */
+.dtable{width:100%;border-collapse:collapse;flex-shrink:0;}
+.dtable th{font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--ink4);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2);position:sticky;top:0;}
+.dtable td{padding:7px 10px;font-size:10px;border-bottom:1px solid var(--border);color:var(--ink2);}
+.dtable tr:last-child td{border-bottom:none;}
+.dtable td.mono{font-family:var(--mono);font-weight:600;color:var(--ink);}
+.dtable td.sm{font-family:var(--mono);font-size:8px;color:var(--ink4);}
+.rchip{font-family:var(--mono);font-size:7px;font-weight:700;padding:2px 7px;border-radius:3px;}
+.rchip.high{background:var(--red-lt);color:var(--red);}
+.rchip.medium{background:var(--amber-lt);color:var(--amber);}
+.rchip.low{background:var(--teal-lt);color:var(--teal);}
+
+/* EMPTY */
+.empty{padding:24px 12px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--ink4);}
+
+/* FOOTER */
+.footer{
+  flex-shrink:0;
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:7px 20px;display:flex;justify-content:space-between;align-items:center;
+}
+.foot-l,.foot-r{font-family:var(--mono);font-size:8px;color:var(--ink4);}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-brand">
+      <div class="tb-icon">
+        <svg viewBox="0 0 18 18" fill="none">
+          <path d="M9 2L14.5 5.5V12.5L9 16L3.5 12.5V5.5L9 2Z" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+          <circle cx="9" cy="9" r="2.5" fill="white"/>
+        </svg>
+      </div>
+      <span class="tb-name">FlowMind</span>
+    </div>
+    <div class="tb-div"></div>
+    <span class="tb-sub">Building Infrastructure Control &nbsp;·&nbsp; TIES454 &nbsp;·&nbsp; Neural Nexus</span>
+  </div>
+  <div class="tb-right">
+    <div class="tb-pill pill-live" id="tb-pill">
+      <div class="pill-dot"></div>
+      <span id="tb-lbl">CONNECTED</span>
+    </div>
+    <div class="tb-div"></div>
+    <div class="tb-time" id="clock">--:--:--</div>
+  </div>
+</div>
+
+<!-- OFFLINE BANNER -->
+<div class="offline" id="offline">
+  Cannot connect to FlowMind API — ensure <strong>python main.py</strong> is running on port 5000
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <div class="sb-sec">
+        <div class="sb-lbl">Agent Network</div>
+
+        <div class="sb-agent st-active" id="sb-fault_detection">
+          <div class="sb-icon i-teal">
+            <svg viewBox="0 0 14 14" fill="none" stroke-width="1.5" stroke-linecap="round">
+              <circle cx="6" cy="6" r="4"/><line x1="9" y1="9" x2="12.5" y2="12.5"/>
+            </svg>
+          </div>
+          <div class="sb-info">
+            <div class="sb-name">Fault Detection</div>
+            <div class="sb-st ok" id="sb-fault_detection-st">monitoring</div>
+          </div>
+          <div class="sb-cnt" id="sb-fault_detection-cnt">0</div>
+        </div>
+
+        <div class="sb-agent st-active" id="sb-diagnostic">
+          <div class="sb-icon i-blue">
+            <svg viewBox="0 0 14 14" fill="none" stroke-width="1.5" stroke-linecap="round">
+              <path d="M1.5 7h2l2-4 2 8 2-4 1.5 0h1"/>
+            </svg>
+          </div>
+          <div class="sb-info">
+            <div class="sb-name">Diagnostic</div>
+            <div class="sb-st ok" id="sb-diagnostic-st">waiting</div>
+          </div>
+          <div class="sb-cnt" id="sb-diagnostic-cnt">0</div>
+        </div>
+
+        <div class="sb-agent st-active" id="sb-people_flow">
+          <div class="sb-icon i-slate">
+            <svg viewBox="0 0 14 14" fill="none" stroke-width="1.5" stroke-linecap="round">
+              <circle cx="5" cy="4" r="1.5"/>
+              <circle cx="9.5" cy="4" r="1.5"/>
+              <path d="M2 12c0-2 1.3-3 3-3s3 1 3 3"/>
+              <path d="M9.5 9c1.5 0 2.5 0.8 2.5 3"/>
+            </svg>
+          </div>
+          <div class="sb-info">
+            <div class="sb-name">People Flow</div>
+            <div class="sb-st ok" id="sb-people_flow-st">forecasting</div>
+          </div>
+          <div class="sb-cnt" id="sb-people_flow-cnt">0</div>
+        </div>
+
+        <div class="sb-agent st-active" id="sb-dispatch">
+          <div class="sb-icon i-amber">
+            <svg viewBox="0 0 14 14" fill="none" stroke-width="1.5" stroke-linecap="round">
+              <path d="M1.5 2l11 5-11 5V9l7-2-7-2V2z"/>
+            </svg>
+          </div>
+          <div class="sb-info">
+            <div class="sb-name">Dispatch Coord.</div>
+            <div class="sb-st ok" id="sb-dispatch-st">standby</div>
+          </div>
+          <div class="sb-cnt" id="sb-dispatch-cnt">0</div>
+        </div>
+
+        <div class="sb-agent st-active" id="sb-reporting">
+          <div class="sb-icon i-slate">
+            <svg viewBox="0 0 14 14" fill="none" stroke-width="1.5" stroke-linecap="round">
+              <rect x="2" y="2" width="10" height="10" rx="1.5"/>
+              <line x1="4.5" y1="5" x2="9.5" y2="5"/>
+              <line x1="4.5" y1="7" x2="9.5" y2="7"/>
+              <line x1="4.5" y1="9.5" x2="7" y2="9.5"/>
+            </svg>
+          </div>
+          <div class="sb-info">
+            <div class="sb-name">Reporting</div>
+            <div class="sb-st ok" id="sb-reporting-st">collecting</div>
+          </div>
+          <div class="sb-cnt" id="sb-reporting-cnt">0</div>
+        </div>
+      </div>
+
+      <div class="sb-sec">
+        <div class="sb-lbl">KPI Summary</div>
+        <div class="kpi-grid">
+          <div class="kpi-box kpi-wide">
+            <div class="kpi-val c-teal" id="kpi-total">0</div>
+            <div class="kpi-lbl">Total incidents</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-val c-red" id="kpi-emerg">0</div>
+            <div class="kpi-lbl">Emergency</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-val c-amber" id="kpi-sched">0</div>
+            <div class="kpi-lbl">Scheduled</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-val c-blue" id="kpi-msgs">0</div>
+            <div class="kpi-lbl">Messages</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-val c-teal" id="kpi-down">0</div>
+            <div class="kpi-lbl">Min. saved</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- EQUIPMENT STRIP -->
+    <div class="strip-equip">
+      <div class="strip-title">Equipment Monitoring — 4 Units</div>
+      <div class="equip-row" id="equip-row">
+        <div style="grid-column:span 4"><div class="empty">Awaiting sensor data...</div></div>
+      </div>
+    </div>
+
+    <!-- LOWER 3-COL -->
+    <div class="lower">
+
+      <!-- COL 1: INCIDENTS -->
+      <div class="lower-col">
+        <div class="col-head">
+          <span class="col-title">Incident Log</span>
+          <span class="col-badge" id="inc-cnt">0 incidents</span>
+        </div>
+        <div class="col-body" id="inc-body">
+          <div class="empty">No incidents — system nominal</div>
+        </div>
+      </div>
+
+      <!-- COL 2: MESSAGE FEED -->
+      <div class="lower-col">
+        <div class="col-head">
+          <span class="col-title">Agent Message Feed</span>
+          <span class="col-badge" id="msg-cnt">0 messages</span>
+        </div>
+        <div class="col-body" id="feed-body">
+          <div class="empty">Waiting for agent messages...</div>
+        </div>
+      </div>
+
+      <!-- COL 3: DEMAND FORECAST -->
+      <div class="lower-col">
+        <div class="col-head">
+          <span class="col-title">Passenger Demand</span>
+          <span class="col-badge">People Flow Agent</span>
+        </div>
+        <div class="col-body" style="padding:0;overflow-x:hidden;">
+          <table class="dtable">
+            <thead>
+              <tr>
+                <th>Unit</th>
+                <th>Passengers</th>
+                <th>Window</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody id="demand-body">
+              <tr><td colspan="4"><div class="empty">Awaiting forecasts...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="foot-l">SPADE 3.x &nbsp;·&nbsp; ejabberd XMPP &nbsp;·&nbsp; Flask REST API &nbsp;·&nbsp; Python 3.11 &nbsp;·&nbsp; University of Jyväskylä</div>
+  <div class="foot-r">Neural Nexus &nbsp;·&nbsp; FlowMind v1.0 &nbsp;·&nbsp; <span id="last-upd">--</span></div>
+</div>
+
+<script>
+const API='http://localhost:5000/api/snapshot';
+let prevMsg=0,prevInc=0;
+
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString('fi-FI');},1000);
+document.getElementById('clock').textContent=new Date().toLocaleTimeString('fi-FI');
+
+function stCls(s){
+  s=(s||'').toLowerCase();
+  if(s.includes('anomaly')||s.includes('emergency')||s.includes('alert')||s.includes('fault')) return 'alert';
+  if(s.includes('analys')||s.includes('dispatching')||s.includes('received')||s.includes('logging')||s.includes('triage')) return 'busy';
+  return 'ok';
+}
+function sbCls(s){
+  const c=stCls(s);
+  return c==='alert'?'st-alert':c==='busy'?'st-busy':'st-active';
+}
+
+function renderAgents(ag){
+  Object.entries(ag).forEach(([n,d])=>{
+    const el=document.getElementById(`sb-${n}`);
+    const st=document.getElementById(`sb-${n}-st`);
+    const ct=document.getElementById(`sb-${n}-cnt`);
+    if(el) el.className=`sb-agent ${sbCls(d.status)}`;
+    if(st){st.textContent=d.status||'--';st.className=`sb-st ${stCls(d.status)}`;}
+    if(ct) ct.textContent=d.msg_count||0;
+  });
+}
+
+function barClr(sev){
+  if(sev==='high') return '#DC2626';
+  if(sev==='medium'||sev==='low') return '#E09020';
+  return '#1FAF87';
+}
+function rCls(v,hi,wa){return v>hi?'r-high':v>wa?'r-warn':'r-ok';}
+
+function renderEquip(rd){
+  if(!rd||!Object.keys(rd).length) return;
+  const TYPES={'ELV-01':{t:'Elevator',l:'Helsinki Tower'},'ELV-04':{t:'Elevator',l:'Helsinki Tower'},'ESC-A':{t:'Escalator',l:'Mall N. Wing'},'ESC-B':{t:'Escalator',l:'Mall S. Wing'}};
+  document.getElementById('equip-row').innerHTML=Object.entries(rd).map(([id,r])=>{
+    const sev=r.severity||'normal';
+    const flt=sev==='high',wa=sev==='medium'||sev==='low';
+    const vib=parseFloat(r.vibration||0),tmp=parseFloat(r.temperature||0),drs=parseInt(r.door_cycles||0);
+    const vp=Math.min(100,Math.round(vib/14*100)),tp=Math.min(100,Math.round(tmp/100*100)),dp=Math.min(100,Math.round(drs/1200*100));
+    const clr=barClr(sev);
+    const meta=TYPES[id]||{t:'Unit',l:'—'};
+    const dotCls=flt?'dot-fault':wa?'dot-warn':'dot-ok';
+    const sevCls=`s-${sev==='normal'?'ok':sev}`;
+    const sevTxt=(sev==='normal'?'NOMINAL':sev).toUpperCase();
+    return `<div class="eq-card ${flt?'f-fault':wa?'f-warn':''}">
+      <div class="eq-head">
+        <div><div class="eq-id">${id}</div><div class="eq-type">${meta.t}</div></div>
+        <div class="eq-right"><div class="eq-dot ${dotCls}"></div><div class="eq-sev ${sevCls}">${sevTxt}</div></div>
+      </div>
+      <div class="eq-sensors">
+        <div class="snr"><span class="snr-lbl">VIB</span><div class="snr-track"><div class="snr-fill" style="width:${vp}%;background:${clr}"></div></div><span class="snr-val ${rCls(vib,7,5)}">${vib.toFixed(1)}</span></div>
+        <div class="snr"><span class="snr-lbl">TEMP</span><div class="snr-track"><div class="snr-fill" style="width:${tp}%;background:${clr}"></div></div><span class="snr-val ${rCls(tmp,75,65)}">${tmp.toFixed(0)}°</span></div>
+        <div class="snr"><span class="snr-lbl">DOORS</span><div class="snr-track"><div class="snr-fill" style="width:${dp}%;background:${clr}"></div></div><span class="snr-val ${rCls(drs,950,800)}">${drs}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderFeed(msgs){
+  if(!msgs||!msgs.length) return;
+  const body=document.getElementById('feed-body');
+  if(body.querySelector('.empty')) body.innerHTML='';
+  document.getElementById('msg-cnt').textContent=`${msgs.length} messages`;
+  if(msgs.length<=prevMsg) return;
+  const news=msgs.slice(0,msgs.length-prevMsg);
+  prevMsg=msgs.length;
+  news.forEach(m=>{
+    const el=document.createElement('div');
+    el.className=`fi ${m.type||'system'}`;
+    el.innerHTML=`<span class="fi-time">${m.timestamp||''}</span><span class="fi-txt">${m.text||''}</span>`;
+    body.insertBefore(el,body.firstChild);
+  });
+  // Keep max 60 items
+  while(body.querySelectorAll('.fi').length>60) body.removeChild(body.lastChild);
+}
+
+function renderInc(incs){
+  if(!incs||!incs.length) return;
+  const body=document.getElementById('inc-body');
+  document.getElementById('inc-cnt').textContent=`${incs.length} incident${incs.length===1?'':'s'}`;
+  if(incs.length<=prevInc){
+    if(body.querySelector('.empty')) body.innerHTML='';
+    return;
+  }
+  prevInc=incs.length;
+  body.innerHTML=incs.slice(0,20).map(i=>`
+    <div class="inc">
+      <div class="inc-bar ${i.urgency||'monitor'}"></div>
+      <div class="inc-body">
+        <div class="inc-r1"><span class="inc-eq">${i.equipment_id}</span><span class="urg ${i.urgency||'monitor'}">${(i.urgency||'monitor').toUpperCase()}</span></div>
+        <div class="inc-cause">${i.root_cause||''}</div>
+        <div class="inc-footer"><span class="inc-tech">→ ${i.technician||''}</span><span class="inc-ttf">TTF ${i.ttf_hours||'?'}h · ${i.predicted_passengers||0} pax</span></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderDemand(fc){
+  if(!fc||!Object.keys(fc).length) return;
+  document.getElementById('demand-body').innerHTML=Object.entries(fc).map(([id,f])=>`
+    <tr>
+      <td class="mono">${id}</td>
+      <td class="mono">${f.passengers||0}</td>
+      <td class="sm">${f.time_window||'—'}</td>
+      <td><span class="rchip ${f.risk||'low'}">${(f.risk||'low').toUpperCase()}</span></td>
+    </tr>`).join('');
+}
+
+function renderKpis(k){
+  if(!k) return;
+  document.getElementById('kpi-total').textContent=k.total_incidents||0;
+  document.getElementById('kpi-emerg').textContent=k.emergencies||0;
+  document.getElementById('kpi-sched').textContent=k.scheduled||0;
+  document.getElementById('kpi-msgs').textContent=k.messages_sent||0;
+  document.getElementById('kpi-down').textContent=k.downtime_saved||0;
+}
+
+async function poll(){
+  try{
+    const r=await fetch(API),d=await r.json();
+    document.getElementById('tb-pill').className='tb-pill pill-live';
+    document.getElementById('tb-lbl').textContent='CONNECTED';
+    document.getElementById('offline').style.display='none';
+    document.getElementById('last-upd').textContent='updated '+new Date().toLocaleTimeString('fi-FI');
+    renderKpis(d.kpis);
+    renderAgents(d.agent_status||{});
+    renderEquip(d.sensor_readings||{});
+    renderFeed(d.messages||[]);
+    renderInc(d.incidents||[]);
+    renderDemand(d.demand_forecasts||{});
+  } catch(e){
+    document.getElementById('tb-pill').className='tb-pill pill-err';
+    document.getElementById('tb-lbl').textContent='OFFLINE';
+    document.getElementById('offline').style.display='block';
+  }
+}
+poll();
+setInterval(poll,1000);
+</script>
+</body>
+</html>
