@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.python-version
+*.egg-info/
+dist/
+build/
+
+# uv
+.uv/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Postgres / DB
+*.sql.gz
+pgdata/
+
+# Ollama models
+ollama-data/
+
+# Docker
+docker/**/data/
+
+# Logs
+*.log
+logs/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude Code local settings (machine-specific, not project config)
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
