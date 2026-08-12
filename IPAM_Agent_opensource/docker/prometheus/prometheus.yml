@@ -1,0 +1,15 @@
+# Scrape config for docs/architecture.md section 4.9.
+# The backend exposes /metrics via prometheus_client (see backend/app/core/metrics.py).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: ipam-agent-backend
+    static_configs:
+      - targets: ["backend:8000"]
+    metrics_path: /metrics
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
